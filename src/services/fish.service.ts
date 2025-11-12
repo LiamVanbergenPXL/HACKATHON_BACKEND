@@ -14,6 +14,71 @@ async function createFishWithData(fishData: any): Promise<ApiResponse<any>> {
     // YOU NEED TO IMPLEMENT THIS HERE
     // Related data creation is not implemented - fish will be created without colors, predators, or fun facts
 
+    // SOLUTION: Create related data in parallel
+    const fishId = savedFish._id;
+    const creationPromises = [];
+
+    // 1. Create FishColors
+    if (fishData.colors && Array.isArray(fishData.colors) && fishData.colors.length > 0) {
+      const colorsToCreate = fishData.colors
+        .filter((c: any) => c && c.colorName) // Ensure colorName exists
+        .map((c: any) => ({
+          fishId: fishId,
+          colorName: c.colorName,
+        }));
+      
+      if (colorsToCreate.length > 0) {
+        creationPromises.push(FishColor.insertMany(colorsToCreate));
+      }
+    }
+
+    // 2. Create Predators
+    if (fishData.predators && Array.isArray(fishData.predators) && fishData.predators.length > 0) {
+      const predatorsToCreate = fishData.predators
+        .filter((p: any) => p && p.predatorName) // Ensure predatorName exists
+        .map((p: any) => ({
+          fishId: fishId,
+          predatorName: p.predatorName,
+        }));
+      
+      if (predatorsToCreate.length > 0) {
+        creationPromises.push(Predator.insertMany(predatorsToCreate));
+      }
+    }
+
+    // 3. Create FunFacts
+    if (fishData.funFacts && Array.isArray(fishData.funFacts) && fishData.funFacts.length > 0) {
+      const funFactsToCreate = fishData.funFacts
+        .filter((f: any) => f && f.funFactDescription) // Ensure funFactDescription exists
+        .map((f: any) => ({
+          fishId: fishId,
+          funFactDescription: f.funFactDescription,
+        }));
+
+      if (funFactsToCreate.length > 0) {
+        creationPromises.push(FunFact.insertMany(funFactsToCreate));
+      }
+    }
+    
+    // 4. Create FishImages (if `images` array of Buffers is provided)
+    if (fishData.images && Array.isArray(fishData.images) && fishData.images.length > 0) {
+      const imagesToCreate = fishData.images
+        .filter((img: any) => img instanceof Buffer) // Ensure it's a buffer
+        .map((imgBuffer: Buffer) => ({
+          fishId: fishId,
+          imageBlob: imgBuffer,
+        }));
+      
+      if (imagesToCreate.length > 0) {
+        creationPromises.push(FishImage.insertMany(imagesToCreate));
+      }
+    }
+
+    // Wait for all related data to be created
+    if (creationPromises.length > 0) {
+      await Promise.all(creationPromises);
+    }
+    
     return createSuccessResponse(savedFish, "Fish and related data created successfully");
   } catch (error) {
     return createErrorResponse(error, "Failed to create fish and related data");
