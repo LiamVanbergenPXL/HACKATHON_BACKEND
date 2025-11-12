@@ -70,11 +70,7 @@ STORAGE_PATH=./uploads
 
 ```bash
 # Start MongoDB container
-docker run -d \
-  --name mongodb-fishtracker \
-  -p 27017:27017 \
-  -e MONGO_INITDB_DATABASE=fishDB \
-  mongo:latest
+docker run -d --name mongodb-fishtracker -p 27017:27017 -e MONGO_INITDB_DATABASE=fishDB mongo:latest
 
 # Verify it's running
 docker ps

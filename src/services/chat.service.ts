@@ -31,14 +31,55 @@ export async function getFishDataAndChat(deviceIdentifier: string, userMessage: 
     // YOU NEED TO IMPLEMENT THIS HERE
     
     // PLACEHOLDER: Basic formatting - proper structure needed
-    const fishData = device.fish.map(fishEntry => {
+      const fishData = device.fish.map(fishEntry => {
+      // Assuming 'device.fish' has been populated, so 'fishEntry.fish'
+      // is a full Fish document and not just an ObjectId.
       const fish = fishEntry.fish as any;
+
+      // Handle cases where population might have failed or fish is null
+      if (!fish) {
+        return {
+          name: "Unknown Fish",
+          error: "Fish data was not properly populated."
+        };
+      }
+
       // TODO: Select and format the most relevant fish properties for the AI context
+      // This structure maps your exact schema fields to a flat, readable object
+      // for the AI context.
       return {
         name: fish.name || "Unknown",
-        // YOU NEED TO IMPLEMENT PROPER FISH DATA FORMATTING HERE
-        // Consider including: family, size, water type, description, habitat, conservation status, etc.
-        basicInfo: "YOU NEED TO IMPLEMENT PROPER FISH DATA FORMATTING"
+        family: fish.family || "Unknown",
+
+        // Combine min/max fields into meaningful ranges
+        size_range_cm: { 
+          min: fish.minSize, 
+          max: fish.maxSize 
+        },
+        depth_range_m: { 
+          min: fish.depthRangeMin, 
+          max: fish.depthRangeMax 
+        },
+
+        // e.g., 'Freshwater', 'Saltwater', 'Brackish'
+        water_type: fish.waterType || "Unknown", 
+        
+        // Combine related text fields for a fuller picture
+        description: fish.description || "No description available.",
+        appearance: fish.colorDescription || "No color description.",
+        
+        // Combine environment and region into a 'habitat' concept
+        habitat: {
+          environment: fish.environment, // e.g., "Coral reefs"
+          region: fish.region         // e.g., "Indo-Pacific"
+        },
+        
+        // Use the specific conservation status fields
+        conservation_status: fish.conservationStatus,
+        conservation_details: fish.consStatusDescription,
+
+        // Include the timestamp from the specific device capture
+        identified_on: fishEntry.timestamp,
       };
     });
 
