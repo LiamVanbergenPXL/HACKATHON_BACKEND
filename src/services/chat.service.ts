@@ -11,7 +11,7 @@ export async function getFishDataAndChat(deviceIdentifier: string, userMessage: 
     // YOU NEED TO IMPLEMENT THIS HERE
     
     // PLACEHOLDER: Basic check only
-    const MAX_MESSAGE_LENGTH = 2048;
+    const MAX_MESSAGE_LENGTH = 1000;
     if (!userMessage || userMessage.trim().length === 0) {
       return createErrorResponse({ code: 'INVALID_INPUT', field: 'userMessage' }, 'Message cannot be empty');
     }
@@ -113,11 +113,26 @@ export async function getFishDataAndChat(deviceIdentifier: string, userMessage: 
     // YOU NEED TO IMPLEMENT THIS HERE
     
     // PLACEHOLDER: Basic system message - proper context building needed
-    const systemMessage = `You are a helpful assistant. 
-    Fish data: ${JSON.stringify(fishData)}
-    YOU NEED TO IMPLEMENT PROPER SYSTEM MESSAGE CONSTRUCTION HERE.
-    The system message should provide context about detected fish and instruct the AI on how to respond.`;
+    const systemMessage = `
+You are a specialized AI assistant for FishTracker. 
+Your sole purpose is to answer questions based *only* on the fish detection data provided to you.
 
+Here is the data for all fish detected by the user's device (in JSON format):
+\`\`\`json
+${JSON.stringify(fishData, null, 2)}
+\`\`\`
+
+---
+**Your Instructions:**
+1.  **Strictly On-Topic:** Only use the fish data provided above in the JSON block to answer the user.
+2.  **Decline Off-Topic:** Politely decline any questions about other topics, general knowledge, or fish that are *not* in the list.
+3.  **Be Conversational:** Answer the user's questions clearly and naturally. You can summarize data (e.g., "You have seen 3 fish total"), count fish, or describe specific fish based on the provided details.
+4.  **Use Context:** You can use the "detectionTimestamp" to answer questions about *when* a fish was seen.
+5.  **Do Not Mention "JSON":** Do not refer to "the JSON" or "the provided data" in your response. Speak as if you are the device's built-in assistant.
+
+Example of a good response: "Your device has detected a Goldfish (seen on...) and a Clownfish (seen on...)."
+Example of a bad (off-topic) response: "I'm sorry, I can only provide information about the fish detected by your device."
+`;
     // Get AI response
     const response = await client.chat.completions.create({
       model: modelName,
