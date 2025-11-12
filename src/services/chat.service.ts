@@ -1,6 +1,6 @@
 import { Device } from "../db/models";
 import { ApiResponse, createErrorResponse, createSuccessResponse } from "../lib/mongooseResponseFormatter";
-import OpenAI from 'openai';
+import OpenAI, { APIError } from 'openai';
 import sanitizeHtml from 'sanitize-html';
 
 export async function getFishDataAndChat(deviceIdentifier: string, userMessage: string): Promise<ApiResponse<any>> {
@@ -152,12 +152,12 @@ Example of a bad (off-topic) response: "I'm sorry, I can only provide informatio
     // PLACEHOLDER: Basic extraction - proper validation needed
     const aiResponse = response.choices[0]?.message?.content;
     
-    if (!aiResponse) {
-      return createErrorResponse({ message: 'AI response extraction not fully implemented - YOU NEED TO IMPLEMENT THIS HERE' }, 'No response received from AI');
+    if (!aiResponse || aiResponse.trim().length === 0) {
+      return createErrorResponse({ code: 'AI_EMPTY_RESPONSE', field: 'aiResponse' }, 'No response received from AI');
     }
 
     return createSuccessResponse({
-      response: aiResponse
+      response: aiResponse.trim()
     }, 'Successfully processed chat request');
 
   } catch (error) {
@@ -168,10 +168,29 @@ Example of a bad (off-topic) response: "I'm sorry, I can only provide informatio
     // YOU NEED TO IMPLEMENT THIS HERE
     
     // PLACEHOLDER: Generic error handling - proper error handling needed
-    console.error('Chat service error - YOU NEED TO IMPLEMENT PROPER ERROR HANDLING:', error);
+    console.error(
+        '[CHAT_SERVICE_ERROR]', // Een doorzoekbare prefix
+        `Error processing chat for device: ${deviceIdentifier}`,
+        {
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          errorStack: error instanceof Error ? error.stack : undefined,
+          errorObject: error // Log het volledige error-object
+        }
+    );
+    if (error instanceof APIError) {
+      return createErrorResponse(
+          {
+            code: error.code || 'OPENAI_API_ERROR',
+            status: error.status, // bv. 401, 429, 500
+            type: error.type,
+            message: error.message
+          },
+          `The AI service failed to respond. (Error: ${error.type || 'Unknown'})`
+      );
+    }
     return createErrorResponse(
-      { message: `Chat processing failed - YOU NEED TO IMPLEMENT PROPER ERROR HANDLING: ${error instanceof Error ? error.message : 'Unknown error'}` },
-      'Failed to process chat request'
+        error,
+        'An unexpected server error occurred. Please try again.'
     );
   }
 }
