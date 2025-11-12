@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-
+import sharp from 'sharp';
 // Prompts moved from Azure Functions
 const fishNameSystemPrompt = `
 You are an expert marine biologist AI that analyzes fish images with maximum accuracy. 
@@ -75,8 +75,17 @@ async function saveImageLocally(imageBuffer: ArrayBuffer, deviceId: string): Pro
   
   const fileName = `${Date.now()}_${crypto.randomUUID()}.jpg`;
   const filePath = `${uploadDir}/${fileName}`;
-  await writeFile(filePath, Buffer.from(imageBuffer));
-  
+  //await writeFile(filePath, Buffer.from(imageBuffer));
+
+  await sharp(Buffer.from(imageBuffer))
+      .resize({
+        width: 1024,
+        withoutEnlargement: true
+      })
+      .jpeg({
+        quality: 80
+      })
+      .toFile(filePath);
   // Return path relative to storage root for API serving
   return `${deviceId}/${fileName}`;
 }
