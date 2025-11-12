@@ -86,7 +86,15 @@ function cleanJsonResponse(response: string): string {
   // The AI sometimes returns JSON wrapped in ```json blocks that need to be removed before parsing.
   // YOU NEED TO IMPLEMENT THIS HERE
   // Currently returns response as-is - may fail if wrapped in markdown
-  return response.trim();
+  let cleaned = response.trim();
+
+  if(cleaned.startsWith("```json ")){
+    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+  }
+  else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+  }
+  return cleaned.trim();
 }
 
 export async function processFishImageSimple(
