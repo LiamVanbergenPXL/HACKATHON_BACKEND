@@ -1,6 +1,7 @@
 import { Device } from "../db/models";
 import { ApiResponse, createErrorResponse, createSuccessResponse } from "../lib/mongooseResponseFormatter";
 import OpenAI from 'openai';
+import sanitizeHtml from 'sanitize-html';
 
 export async function getFishDataAndChat(deviceIdentifier: string, userMessage: string): Promise<ApiResponse<any>> {
   try {
@@ -10,10 +11,21 @@ export async function getFishDataAndChat(deviceIdentifier: string, userMessage: 
     // YOU NEED TO IMPLEMENT THIS HERE
     
     // PLACEHOLDER: Basic check only
+    const MAX_MESSAGE_LENGTH = 2048;
     if (!userMessage || userMessage.trim().length === 0) {
-      return createErrorResponse({ message: 'Message validation not fully implemented - YOU NEED TO IMPLEMENT THIS HERE' }, 'Message cannot be empty');
+      return createErrorResponse({ code: 'INVALID_INPUT', field: 'userMessage' }, 'Message cannot be empty');
     }
-    
+    if(userMessage.length > MAX_MESSAGE_LENGTH){
+      return createErrorResponse({ code: 'INVALID_INPUT', field: 'userMessage' }, `Message is larger then ${MAX_MESSAGE_LENGTH}`)
+    }
+    const cleanMessage = sanitizeHtml(userMessage,{
+      allowedTags: [],
+      allowedAttributes: {}
+    });
+    if (cleanMessage !== userMessage) {
+      return createErrorResponse({ code: 'INVALID_INPUT' }, 'Invalid characters detected.');
+    }
+
     // Get device and populate fish data
     const device = await Device.findOne({ deviceIdentifier }).populate('fish.fish');
     
