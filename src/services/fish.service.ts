@@ -149,9 +149,10 @@ async function getFishByDevice(deviceId: string): Promise<ApiResponse<any>> {
     // YOU NEED TO IMPLEMENT THIS HERE
     const fishWithImages = device.fish.map((fishEntry: any) => {
       const fishData = fishEntry.toObject();
+      const imagePath = fishData.imageUrl;
       return {
         ...fishData,
-        imageUrl: "YOU NEED TO IMPLEMENT THIS HERE" // Placeholder - implement proper URL construction
+        imageUrl: `/api/fish/image/${imagePath}` // Placeholder - implement proper URL construction
       };
     });
     
