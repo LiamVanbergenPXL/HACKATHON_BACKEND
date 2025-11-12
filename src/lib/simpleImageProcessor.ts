@@ -86,15 +86,20 @@ function cleanJsonResponse(response: string): string {
   // The AI sometimes returns JSON wrapped in ```json blocks that need to be removed before parsing.
   // YOU NEED TO IMPLEMENT THIS HERE
   // Currently returns response as-is - may fail if wrapped in markdown
-  let cleaned = response.trim();
-
-  if(cleaned.startsWith("```json ")){
-    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+  const firstBrace = response.indexOf('{');
+  // Find the last occurrence of '}'
+  const lastBrace = response.lastIndexOf('}');
+  
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+    // No valid JSON object found, return the original string
+    // It will fail parsing, but this indicates a bad response.
+    console.error("Could not find valid JSON object in AI response:", response);
+    return response.trim();
   }
-  else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-  }
-  return cleaned.trim();
+  
+  // Extract the JSON part
+  const jsonString = response.substring(firstBrace, lastBrace + 1);
+  return jsonString.trim();
 }
 
 export async function processFishImageSimple(
@@ -232,12 +237,36 @@ export async function processFishImageSimple(
     // The response might have fishData nested, or it might be flat. Handle both cases.
     // YOU NEED TO IMPLEMENT THIS HERE
     
-    // PLACEHOLDER: Assume flat structure - may fail if nested
-    const fishData = enrichmentData.fishData || enrichmentData;
-    if (!fishData || typeof fishData !== 'object') {
-      throw new Error('YOU NEED TO IMPLEMENT PROPER DATA EXTRACTION FROM AI RESPONSE');
+    let fishData: any;
+
+    // 1. Get the base fishData object
+    if (enrichmentData.fishData && typeof enrichmentData.fishData === 'object') {
+      // This is the expected structure.
+      fishData = enrichmentData.fishData;
+    } else if (enrichmentData.name && typeof enrichmentData.name === 'string') {
+      // Fallback: The AI returned a flat structure.
+      console.warn("AI returned a flat structure, not the expected nested 'fishData' object. Processing as-is.");
+      fishData = enrichmentData;
+    } else {
+      // The response is invalid.
+      console.error('Invalid AI response structure:', enrichmentData);
+      throw new Error('Failed to extract valid fish data from AI response. Response was malformed.');
     }
 
+    // 2. Attach the related arrays (which are top-level in the prompt's response structure)
+    //    This creates the single, complete object that 'createFishWithData' expects.
+    if (enrichmentData.colors && Array.isArray(enrichmentData.colors)) {
+      fishData.colors = enrichmentData.colors;
+    }
+    
+    if (enrichmentData.predators && Array.isArray(enrichmentData.predators)) {
+      fishData.predators = enrichmentData.predators;
+    }
+    
+    if (enrichmentData.funFacts && Array.isArray(enrichmentData.funFacts)) {
+      fishData.funFacts = enrichmentData.funFacts;
+    }
+    
     // Step 4: Register fish and add to device
     console.log("Sending new fish data to API for registration");
     const registerResponse = await fetch(`${apiBaseUrl}/fish/process-fish-registration`, {

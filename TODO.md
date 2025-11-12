@@ -11,7 +11,6 @@ This file contains all the TODO items that need to be implemented by students du
 - [Validation](#validation)
 - [Error Handling](#error-handling)
 - [Routes](#routes)
-- [Legacy/Compatibility](#legacycompatibility)
 
 ---
 
