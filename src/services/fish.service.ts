@@ -1,6 +1,40 @@
+import { z } from 'zod';
+import { formatZodError } from '../lib/zodErrorFormatter';
 import { Fish, FishColor, FishImage, Predator, FunFact, Device } from "../db/models";
 import { ApiResponse, createSuccessResponse, createErrorResponse } from "../lib/mongooseResponseFormatter";
 
+const fishValidationSchema = z.object({
+  name: z.string().nonempty({ message: "Fish name is required" }),
+  family: z.string().nonempty({ message: "Family is required" }),
+  minSize: z.number().min(0),
+  maxSize: z.number().min(0),
+  waterType: z.enum(['Freshwater', 'Saltwater', 'Brackish']),
+  description: z.string().nonempty({ message: "Description is required" }),
+  colorDescription: z.string().nonempty({ message: "Color description is required" }),
+  depthRangeMin: z.number().min(0),
+  depthRangeMax: z.number().min(0),
+  environment: z.string().nonempty({ message: "Environment is required" }),
+  region: z.string().nonempty({ message: "Region is required" }),
+  conservationStatus: z.enum([
+    'Least Concern', 'Near Threatened', 'Vulnerable', 'Endangered',
+    'Critically Endangered', 'Extinct in the Wild', 'Extinct', 'Data Deficient'
+  ]),
+  consStatusDescription: z.string().nonempty({ message: "Conservation status description is required" }),
+  aiAccuracy: z.number().min(0).max(100),
+  colors: z.array(z.object({
+    colorName: z.string().nonempty()
+  })).optional(),
+  predators: z.array(z.object({
+    predatorName: z.string().nonempty()
+  })).optional(),
+  funFacts: z.array(z.object({
+    funFactDescription: z.string().nonempty()
+  })).optional(),
+  images: z.array(z.any()).optional(),
+});
+
+
+// async function createFishWithData(fishData: any)...
 // Create a new fish with all related data (no Effect)
 async function createFishWithData(fishData: any): Promise<ApiResponse<any>> {
   try {
@@ -108,14 +142,20 @@ async function processFishRegistration(fishData: any): Promise<ApiResponse<any>>
     // TODO: Validate incoming fish data to ensure all required fields are present and have valid values.
     // Consider what fields are essential for a fish record.
     // YOU NEED TO IMPLEMENT THIS HERE
-    
-    // PLACEHOLDER: Basic check only - proper validation needed
+    const validationResult = fishValidationSchema.safeParse(fishData);
     if (!fishData || !fishData.name) {
       return createErrorResponse({ message: "Fish name is required - YOU NEED TO IMPLEMENT FULL VALIDATION HERE" }, "Fish name is required");
     }
+    if (!validationResult.success){
+      const formattedErrors = formatZodError(validationResult.error);
+      return createErrorResponse(formattedErrors, "Fish data validation failed!")
+    }
+    const validatedFishData = validationResult.data;
+    // PLACEHOLDER: Basic check only - proper validation needed
+
 
     // Check if fish exists and create if it doesn't
-    const result = await checkAndCreateFish(fishData);
+    const result = await checkAndCreateFish(validatedFishData);
     
     if (result.success) {
       return createSuccessResponse(result.data, "Fish processed successfully");
@@ -204,7 +244,24 @@ async function addExistingFishToDevice(deviceId: string, fishName: string, image
     // Consider what time window makes sense and how to track recent additions.
     // You should check if this fish was recently added to this device and skip if it was added too recently.
     const now = new Date();
-    
+    const RATE_LIMIT_WINDOW_MS = 10000;
+    const cutOffTime = new Date(now.getTime() - RATE_LIMIT_WINDOW_MS);
+
+    const recentAdded = device.fish.find((fishEntry: any) => {
+      return fishEntry.fish.toString() === fish._id.toString() &&
+          fishEntry.timestamp > cutOffTime;
+    });
+
+    if (recentAdded){
+      return createSuccessResponse({
+        deviceId: device.deviceIdentifier,
+        fishId: fish._id,
+        fishName: fish.name,
+        imageUrl: imageUrl,
+        timestamp: now,
+        skipped: false
+      }, 'Fish was already added');
+    }
     // PLACEHOLDER: Rate limiting not implemented - always adds fish
     // YOU NEED TO IMPLEMENT THIS HERE
 
