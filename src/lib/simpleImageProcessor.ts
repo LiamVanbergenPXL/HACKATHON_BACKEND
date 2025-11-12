@@ -1,7 +1,8 @@
-import OpenAI from 'openai';
+import OpenAI, { APIError } from 'openai';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import sharp from 'sharp';
+import {json} from "zod";
 // Prompts moved from Azure Functions
 const fishNameSystemPrompt = `
 You are an expert marine biologist AI that analyzes fish images with maximum accuracy. 
@@ -318,11 +319,43 @@ export async function processFishImageSimple(
       }
     }
   } catch (error) {
+
+    console.error("[IMAGE_PROCESSOR_ERROR]", `Failed to process image for device: ${deviceId}`);
     // TODO: Implement proper error handling for the image processing pipeline.
     // Consider what should happen if OpenAI API calls fail, if image saving fails, or if API calls to register fish fail.
     // Should you retry? Should you log specific errors? Should you notify the user?
     // YOU NEED TO IMPLEMENT THIS HERE
-    
+    if (error instanceof APIError) {
+      console.error(
+          '[OpenAI APIError]',
+          {
+            deviceId: deviceId,
+            status: error.status,
+            type: error.type,
+            code: error.code,
+            message: error.message,
+          }
+      );
+    }
+    else if (error instanceof Error) {
+      console.error(
+          '[Javascript APIError]',
+          {
+            deviceId: deviceId,
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          }
+      );
+    }else {
+      console.error(
+          '[Unknown Error]',
+          {
+            deviceId: deviceId,
+            errorObject: JSON.stringify(error, null, 2)
+          }
+      )
+    }
     console.error('Error in fish enrichment process - YOU NEED TO IMPLEMENT PROPER ERROR HANDLING:', error);
     // PLACEHOLDER: Just throw error - proper error handling needed
     throw new Error(`Image processing failed - YOU NEED TO IMPLEMENT PROPER ERROR HANDLING: ${error instanceof Error ? error.message : 'Unknown error'}`);
